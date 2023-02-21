@@ -2,37 +2,47 @@
 # keylight - A small shell script that turns on/off keyboard backlights.
 # Copyleft (C) 2023 spirothXYZ, all rights reserved
 
+# Store name of command to modify LED value
+MODIFIER_COMMAND_ARGS_ON="led 3"
+MODIFIER_COMMAND_ARGS_OFF="-led 3"
+MODIFIER_COMMAND_ARGS=$MODIFIER_COMMAND_ARGS_OFF
+MODIFIER_COMMAND="xset"
+
 # Store path variables to locate the right LED
 LED_PATH_PREFIX="/sys/class/leds/input"
 LED_PATH_SUFFIX="::scrolllock/brightness"
 LED_PATH_COUNT=1
 LED_PATH="${LED_PATH_PREFIX}${LED_PATH_COUNT}${LED_PATH_SUFFIX}"
 
-# Also store utility variables (e.g PRIVILEGE_ELEVATOR, PRIVILEGE_ASK, PRINT_VERBOSE_INFO)
-ALTERNATE_MODIFIER="xset" # Note: xset is set here because it will be used instead of echo redirects (useful for keybinds, pass --shortcut in args)
-PRIVILEGE_ELEVATOR="sudo" # Note: sudo is made the privilege elevator because it is used in most distributions.
-PRIVILEGE_ASK="yes" # Note: setting to "no" will cause the script to fail unless if the user is root
+# Also store utility variables (e.g XSET_USE_MODIFIER, PRINT_VERBOSE_INFO)
+PRINT_HELP_INFO="no"
 PRINT_VERBOSE_INFO="no"
-SHORTCUT="no"
 
 # Parse command-line arguments for utility variables
 for i in "$@"; do
-    if [ $i == "--no-root" ]; then
-        PRIVILEGE_ASK="no"
-    fi
-    if [ $i == "--shortcut" ]; then
-        SHORTCUT="yes"
+    if [ $i == "-h" ] || [ $i == "--help" ]; then
+        PRINT_HELP_INFO="yes"
     fi
     if [ $i == "--verbose" ]; then
         PRINT_VERBOSE_INFO="yes"
     fi
 done
 
+# If PRINT_HELP_INFO is set to yes then print help information and exit
+if [ $PRINT_HELP_INFO == "yes" ]; then
+    echo "Usage: $(basename "$(test -L "$0" && readlink "$0" || echo "$0")") [OPTIONS...] "
+    echo
+    echo "Options:"
+    echo "  --help: Print help information then exit"
+    echo "  --verbose: Print detailed information for advanced users"
+    exit 0
+fi
+
 # Iterate until the correct LED path is found
 while [ ! -f $LED_PATH ];
 do
     if [ $PRINT_VERBOSE_INFO == "yes" ]; then
-        echo "${LED_PATH} does not exist, incrementing path..."
+        echo "${LED_PATH} does not exist, incrementing."
     fi
 
     LED_PATH_COUNT=$((LED_PATH_COUNT + 1))
@@ -54,62 +64,23 @@ if [ $LED_STATE -lt 1 ]; then
         echo "Value returned 0 from ${LED_PATH}"
         echo "Setting value 1 to ${LED_PATH}"
     fi
-    if [ $SHORTCUT == "yes" ]; then
-        # The program will modify the value using an alternative way, which is the xset command.
-        # You must have X.Org or X11 windowing system installed to have the xset command available.
-        xset led 3
-        exit 0
-    fi
-    if [ $EUID -ne 0 ]; then
-        if [ $PRINT_VERBOSE_INFO == "yes" ]; then
-            echo "This program requires root privileges to modify the value."
-            echo "Requesting root privileges using the ${PRIVILEGE_ELEVATOR} command"
-        fi
-        if [ ! command -v $PRIVILEGE_ELEVATOR &> /dev/null ]; then
-            echo "${PRIVILEGE_ELEVATOR} is not a valid command to ask for root privileges."
-            echo "Modify this program to change the privilege request command."
-            exit 127
-        fi
-        if [ $PRIVILEGE_ASK == "yes" ]; then
-            echo "1" | ${PRIVILEGE_ELEVATOR} tee ${LED_PATH} >/dev/null
-        else
-            echo "Cannot ask user for root privileges because --no-root is passed"
-            echo "Failure of requesting root privileges."
-            exit 1
-        fi
-    else
-        echo 1 > ${LED_PATH}
-    fi
+
+    MODIFIER_COMMAND_ARGS=$MODIFIER_COMMAND_ARGS_ON
 elif [ $LED_STATE -gt 0 ]; then
     # LED backlight is already turned on, turn it off.
     if [ $PRINT_VERBOSE_INFO == "yes" ]; then
         echo "Value returned 1 from ${LED_PATH}"
         echo "Setting value 0 to ${LED_PATH}"
     fi
-    if [ $SHORTCUT == "yes" ]; then
-        # The program will modify the value using an alternative way, which is the xset command.
-        # You must have X.Org or X11 windowing system installed to have the xset command available.
-        xset -led 3
-        exit 0
-    fi
-    if [ $EUID -ne 0 ]; then
-        if [ $PRINT_VERBOSE_INFO == "yes" ]; then
-            echo "This program requires root privileges to modify the value."
-            echo "Requesting root privileges using the ${PRIVILEGE_ELEVATOR} command"
-        fi
-        if [ ! command -v $PRIVILEGE_ELEVATOR &> /dev/null ]; then
-            echo "${PRIVILEGE_ELEVATOR} is not a valid command to ask for root privileges."
-            echo "Modify this program to change the privilege request command."
-            exit 127
-        fi
-        if [ $PRIVILEGE_ASK == "yes" ]; then
-            echo "0" | ${PRIVILEGE_ELEVATOR} tee ${LED_PATH} >/dev/null
-        else
-            echo "Cannot ask user for root privileges because --no-root is passed"
-            echo "Failure of requesting root privileges."
-            exit 1
-        fi
-    else
-        echo 0 > ${LED_PATH}
-    fi
+
+    MODIFIER_COMMAND_ARGS=$MODIFIER_COMMAND_ARGS_OFF
 fi
+
+# Make sure the command modifier is valid before executing
+if [ ! command -v ${MODIFIER_COMMAND} &>/dev/null ]; then
+    echo "${MODIFIER_COMMAND} does not exist / or is not a valid command."
+    exit 127
+fi
+
+exec ${MODIFIER_COMMAND} ${MODIFIER_COMMAND_ARGS}
+
