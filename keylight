@@ -8,18 +8,25 @@ MODIFIER_COMMAND_ARGS_OFF="-led 3"
 MODIFIER_COMMAND_ARGS=$MODIFIER_COMMAND_ARGS_OFF
 MODIFIER_COMMAND="xset"
 
-# Store path variables to locate the right LED
+# Store LED path to determine input device
 LED_PATH_PREFIX="/sys/class/leds/input"
 LED_PATH_SUFFIX="::scrolllock/brightness"
 LED_PATH_COUNT=1
 LED_PATH="${LED_PATH_PREFIX}${LED_PATH_COUNT}${LED_PATH_SUFFIX}"
 
-# Also store utility variables (e.g PRINT_HELP_INFO, PRINT_VERBOSE_INFO)
+# Store name of the environment session (e.g wayland, x11, tty)
+ENV_SESSION=$(loginctl show-session 2 -p Type)
+
+# Store argument variables (e.g PRINT_HELP_INFO, PRINT_VERBOSE_INFO)
+ALLOW_NON_X11_SESSION="no"
 PRINT_HELP_INFO="no"
 PRINT_VERBOSE_INFO="no"
 
 # Parse command-line arguments for utility variables
 for i in "$@"; do
+    if [ $i == "--no-x11" ]; then
+        ALLOW_NON_X11_SESSION="yes"
+    fi
     if [ $i == "-h" ] || [ $i == "--help" ]; then
         PRINT_HELP_INFO="yes"
     fi
@@ -33,9 +40,17 @@ if [ $PRINT_HELP_INFO == "yes" ]; then
     echo "Usage: $(basename "$(test -L "$0" && readlink "$0" || echo "$0")") [OPTIONS...] "
     echo
     echo "Options:"
+    echo "  --no-x11: Run without checking X11"
     echo "  --help: Print help information then exit"
     echo "  --verbose: Print detailed information for advanced users"
     exit 0
+fi
+
+# Detect if running in X11, otherwise, exit
+# To disable this check, pass --no-x11 in the arguments
+if [ ${ENV_SESSION#*=} != "x11" ] && [ $ALLOW_NON_X11_SESSION != "yes" ]; then
+    echo "This program requires X11."
+    exit 1
 fi
 
 # Iterate until the correct LED path is found
