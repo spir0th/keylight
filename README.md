@@ -17,4 +17,4 @@ Options:
 ```
 
 ## License
-This project doesn't have any license yet. I'm still thinking which license to use for. :P
+This project is licensed under The Unlicense license.
