@@ -23,7 +23,7 @@ for i in "$@"; do
     if [ $i == "-h" ] || [ $i == "--help" ]; then
         PRINT_HELP_INFO="yes"
     fi
-    if [ $i == "--verbose" ]; then
+    if [ $i == "-v" ] || [ $i == "--verbose" ]; then
         PRINT_VERBOSE_INFO="yes"
     fi
 done
@@ -49,9 +49,9 @@ do
     LED_PATH="${LED_PATH_PREFIX}${LED_PATH_COUNT}${LED_PATH_SUFFIX}"
 done
 
-# If the LED path is never found, then exit.
+# If the LED path cannot be resolved, then exit.
 if [ ! -f $LED_PATH ]; then
-    echo "Cannot get keyboard device that has LED backlight."
+    echo "No input device with LED backlights found."
     exit 1
 fi
 
