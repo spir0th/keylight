@@ -12,6 +12,7 @@ MODIFIER_COMMAND="xset"
 LED_PATH_PREFIX="/sys/class/leds/input"
 LED_PATH_SUFFIX="::scrolllock/brightness"
 LED_PATH_COUNT=1
+LED_PATH_COUNT_MAX=1000
 LED_PATH="${LED_PATH_PREFIX}${LED_PATH_COUNT}${LED_PATH_SUFFIX}"
 
 # Store name of the environment session (e.g wayland, x11, tty)
@@ -58,6 +59,13 @@ while [ ! -f $LED_PATH ];
 do
     if [ $PRINT_VERBOSE_INFO == "yes" ]; then
         echo "${LED_PATH} does not exist, incrementing."
+    fi
+    if [ $LED_PATH_COUNT -gt $LED_PATH_COUNT_MAX ]; then
+        if [ $PRINT_VERBOSE_INFO == "yes" ]; then
+            echo "Path incremental count has reached max limits. Stopping."
+        fi
+
+        break
     fi
 
     LED_PATH_COUNT=$((LED_PATH_COUNT + 1))
