@@ -18,7 +18,7 @@ LED_PATH="${LED_PATH_PREFIX}${LED_PATH_COUNT}${LED_PATH_SUFFIX}"
 # Store name of the environment session (e.g wayland, x11, tty)
 ENV_SESSION=$(loginctl show-session 2 -p Type)
 
-# Store argument variables (e.g PRINT_HELP_INFO, PRINT_VERBOSE_INFO)
+# Store utility variables (e.g PRINT_HELP_INFO, PRINT_VERBOSE_INFO)
 ALLOW_NON_X11_SESSION="no"
 PRINT_HELP_INFO="no"
 PRINT_VERBOSE_INFO="no"
