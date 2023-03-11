@@ -2,11 +2,12 @@
 # keylight - A small shell script that turns on/off keyboard backlights.
 # Copyleft (C) 2023 spirothXYZ, all rights reserved
 
-# Store name of command to modify LED value
-MODIFIER_COMMAND_ARGS_ON="led 3"
-MODIFIER_COMMAND_ARGS_OFF="-led 3"
+# Store commands to use for changing states
+MODIFIER_COMMAND_DEVICE="none"
+MODIFIER_COMMAND_ARGS_ON="1"
+MODIFIER_COMMAND_ARGS_OFF="0"
 MODIFIER_COMMAND_ARGS=$MODIFIER_COMMAND_ARGS_OFF
-MODIFIER_COMMAND="xset"
+MODIFIER_COMMAND="echo"
 
 # Store LED path to determine input device
 LED_PATH_PREFIX="/sys/class/leds/input"
@@ -15,19 +16,12 @@ LED_PATH_COUNT=1
 LED_PATH_COUNT_MAX=1000
 LED_PATH="${LED_PATH_PREFIX}${LED_PATH_COUNT}${LED_PATH_SUFFIX}"
 
-# Store name of the environment session (e.g wayland, x11, tty)
-ENV_SESSION=$(loginctl show-session 2 -p Type)
-
 # Store utility variables (e.g PRINT_HELP_INFO, PRINT_VERBOSE_INFO)
-ALLOW_NON_X11_SESSION="no"
 PRINT_HELP_INFO="no"
 PRINT_VERBOSE_INFO="no"
 
 # Parse command-line arguments for utility variables
 for i in "$@"; do
-    if [ $i == "--no-x11" ]; then
-        ALLOW_NON_X11_SESSION="yes"
-    fi
     if [ $i == "-h" ] || [ $i == "--help" ]; then
         PRINT_HELP_INFO="yes"
     fi
@@ -41,17 +35,9 @@ if [ $PRINT_HELP_INFO == "yes" ]; then
     echo "Usage: $(basename "$(test -L "$0" && readlink "$0" || echo "$0")") [OPTIONS...] "
     echo
     echo "Options:"
-    echo "  --no-x11: Run without checking X11"
     echo "  --help: Print help information then exit"
     echo "  --verbose: Print detailed information for advanced users"
     exit 0
-fi
-
-# Detect if running in X11, otherwise, exit
-# To disable this check, pass --no-x11 in the arguments
-if [ ${ENV_SESSION#*=} != "x11" ] && [ $ALLOW_NON_X11_SESSION != "yes" ]; then
-    echo "This program requires X11."
-    exit 1
 fi
 
 # Iterate until the correct LED path is found
@@ -80,11 +66,14 @@ fi
 
 # DEBUG: Print the correct LED path
 if [ $PRINT_VERBOSE_INFO == "yes" ]; then
-        echo "${LED_PATH} found."
+    echo "${LED_PATH} found."
 fi
 
 # Read the value of LED path to determine state
 LED_STATE=$(cat $LED_PATH)
+
+# Set MODIFIER_COMMAND_DEVICE to LED_PATH's value
+MODIFIER_COMMAND_DEVICE=$LED_PATH
 
 # Turn on/off LED backlight on keyboard depending on the stored state
 if [ $LED_STATE -lt 1 ]; then
@@ -111,5 +100,4 @@ if [ ! command -v ${MODIFIER_COMMAND} &>/dev/null ]; then
     exit 127
 fi
 
-exec ${MODIFIER_COMMAND} ${MODIFIER_COMMAND_ARGS}
-
+exec ${MODIFIER_COMMAND} ${MODIFIER_COMMAND_ARGS} > ${MODIFIER_COMMAND_DEVICE}
