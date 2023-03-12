@@ -62,8 +62,7 @@ done
 if [ ! -f $LED_PATH ]; then
     echo "No input device with LED backlights found."
     exit 1
-else
-if [ $PRINT_VERBOSE_INFO == "yes" ]; then
+elif [ $PRINT_VERBOSE_INFO == "yes" ]; then
     # DEBUG: Print the correct LED paths
     echo "${LED_PATH} found."
 fi
