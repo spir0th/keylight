@@ -1,7 +1,8 @@
 # KeyLight
-A simple shell script that turns on/off the keyboard's backlight.
+A shell script that turns on/off the keyboard's backlight.
 
-*This only works for X11, for other display servers, an implementation will be introduced sometime.*
+*This mostly relies on `xset`, which is part of X.Org*
+*To use this in a TTY/Wayland session, use `--redir` instead*
 
 ## Install
 Simply put the script into your desired destination (e.g `/usr/bin`, `/bin`)
@@ -11,9 +12,10 @@ Simply put the script into your desired destination (e.g `/usr/bin`, `/bin`)
 Usage: keylight [OPTIONS...]
 
 Options:
-  --no-x11: Run without checking X11
+  --redir: Use echo redirection to toggle backlight
+  --testing: Verify script integrity, used for checking errors
   --help: Print help information then exit
-  --verbose: Print detailed information for advanced users
+  --verbose: Show detailed information for debugging purposes
 ```
 
 ## License
