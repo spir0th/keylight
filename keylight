@@ -1,101 +1,141 @@
 #!/bin/sh
 # keylight - A small shell script that turns on/off keyboard backlights.
 # Copyleft (C) 2023 spirothXYZ, all rights reserved
+REDIR_COMMAND_DEVICE="none"
+REDIR_COMMAND_ARGS_ON="1"
+REDIR_COMMAND_ARGS_OFF="0"
+REDIR_COMMAND_ARGS=$TTY_COMMAND_ARGS_OFF
 
-# Store commands to use for changing states
-MODIFIER_COMMAND_DEVICE="none"
-MODIFIER_COMMAND_ARGS_ON="1"
-MODIFIER_COMMAND_ARGS_OFF="0"
-MODIFIER_COMMAND_ARGS=$MODIFIER_COMMAND_ARGS_OFF
-MODIFIER_COMMAND="echo"
+X11_COMMAND_INDEX="3"
+X11_COMMAND_ARGS_ON="led"
+X11_COMMAND_ARGS_OFF="-led"
+X11_COMMAND_ARGS=$TTY_COMMAND_ARGS_OFF
 
-# Store LED path to determine input device
-LED_PATH_PREFIX="/sys/class/leds/input"
-LED_PATH_SUFFIX="::scrolllock/brightness"
-LED_PATH_COUNT=1
-LED_PATH_COUNT_MAX=1000
-LED_PATH="${LED_PATH_PREFIX}${LED_PATH_COUNT}${LED_PATH_SUFFIX}"
+COMMAND="x11" # Available commands are: x11, redir, none
 
-# Store utility variables (e.g PRINT_HELP_INFO, PRINT_VERBOSE_INFO)
-PRINT_HELP_INFO="no"
-PRINT_VERBOSE_INFO="no"
+DEVICE_PATH_PREFIX="/sys/class/leds/input"
+DEVICE_PATH_SUFFIX="::scrolllock/brightness"
+DEVICE_PATH_COUNT=1
+DEVICE_PATH_COUNT_MAX=1000
+DEVICE_PATH="${DEVICE_PATH_PREFIX}${DEVICE_PATH_COUNT}${DEVICE_PATH_SUFFIX}"
 
-# Parse command-line arguments for utility variables
-for i in "$@"; do
-    if [ $i == "-h" ] || [ $i == "--help" ]; then
-        PRINT_HELP_INFO="yes"
+ARGS="$@"
+VERBOSE="no" # Pass --v or --verbose options to enable verbose logging
+
+_redir_check_sudo() {
+    # This is a function used by the redir command, it checks for root privileges.
+    if [ $VERBOSE == "yes" ]; then
+        echo "Checking root privileges..."
     fi
-    if [ $i == "-v" ] || [ $i == "--verbose" ]; then
-        PRINT_VERBOSE_INFO="yes"
+    if [ $(id -u) -gt 0 ]; then
+        echo "This action requires root privileges."
+        exit 1
     fi
-done
+}
 
-# If PRINT_HELP_INFO is set to yes then print help information and exit
-if [ $PRINT_HELP_INFO == "yes" ]; then
-    echo "Usage: $(basename "$(test -L "$0" && readlink "$0" || echo "$0")") [OPTIONS...] "
-    echo
-    echo "Options:"
-    echo "  --help: Print help information then exit"
-    echo "  --verbose: Print detailed information for advanced users"
-    exit 0
-fi
-
-# Iterate until the correct LED path is found
-while [ ! -f $LED_PATH ];
-do
-    if [ $PRINT_VERBOSE_INFO == "yes" ]; then
-        echo "${LED_PATH} does not exist, incrementing."
+detect_session_type() {
+    if [ -z $XDG_SESSION_TYPE ] || [ $XDG_SESSION_TYPE != "x11" ]; then
+        # Xorg is not running / not installed
+        # Force COMMAND to use echo redirection instead of xset
+        echo "Xorg is not running or not installed, echo redirection will be used instead."
+        COMMAND="redir"
     fi
-    if [ $LED_PATH_COUNT -gt $LED_PATH_COUNT_MAX ]; then
-        if [ $PRINT_VERBOSE_INFO == "yes" ]; then
-            echo "Path incremental count has reached max limits. Stopping."
+}
+
+parse_args() {
+    # Parse command-line arguments
+    for i in $ARGS; do
+        if [ $i == "--redir" ]; then
+            COMMAND="redir"
+        fi
+        if [ $i == "--testing" ]; then
+            COMMAND="none"
+        fi
+        if [ $i == "-h" ] || [ $i == "--help" ]; then
+            echo "Usage: $(basename "$(test -L "$0" && readlink "$0" || echo "$0")") [OPTIONS...] "
+            echo
+            echo "Options:"
+            echo "  --redir: Use echo redirection to toggle backlight"
+            echo "  --testing: Verify script integrity, used for checking errors"
+            echo "  --help: Print help information then exit"
+            echo "  --verbose: Show detailed information for debugging purposes"
+            exit 0
+        fi
+        if [ $i == "-v" ] || [ $i == "--verbose" ]; then
+            VERBOSE="yes"
+        fi
+    done
+}
+
+find_device() {
+    # Iterate until the correct device path is found
+    while [ ! -f $DEVICE_PATH ];
+    do
+        if [ $VERBOSE == "yes" ]; then
+            echo "${DEVICE_PATH} does not exist, next."
+        fi
+        if [ $DEVICE_PATH_COUNT -gt $DEVICE_PATH_COUNT_MAX ]; then
+            echo "Device path count has reached it's max limits, stopping."
+            break
         fi
 
-        break
+        DEVICE_PATH_COUNT=$((DEVICE_PATH_COUNT + 1))
+        DEVICE_PATH="${DEVICE_PATH_PREFIX}${DEVICE_PATH_COUNT}${DEVICE_PATH_SUFFIX}"
+    done
+
+    # If the device hasn't been resolved, then exit.
+    if [ ! -f $DEVICE_PATH ]; then
+        echo "No suitable device found."
+        exit 1
+    elif [ -f $DEVICE_PATH ] && [ $VERBOSE == "yes" ]; then
+        echo "${DEVICE_PATH} found."
     fi
+}
 
-    LED_PATH_COUNT=$((LED_PATH_COUNT + 1))
-    LED_PATH="${LED_PATH_PREFIX}${LED_PATH_COUNT}${LED_PATH_SUFFIX}"
-done
+change_state() {
+    # Read the value of device's brightness file to determine state
+    DEVICE_BRIGHTNESS_STATE=$(cat $DEVICE_PATH)
 
-# If the LED path cannot be resolved, then exit.
-if [ ! -f $LED_PATH ]; then
-    echo "No input device with LED backlights found."
-    exit 1
-elif [ $PRINT_VERBOSE_INFO == "yes" ]; then
-    # DEBUG: Print the correct LED paths
-    echo "${LED_PATH} found."
-fi
+    # Set REDIR_COMMAND_DEVICE to device path
+    REDIR_COMMAND_DEVICE=$DEVICE_PATH
 
-# Read the value of LED path to determine state
-LED_STATE=$(cat $LED_PATH)
+    # Turn on/off LED backlight of the device depending on the brightness state
+    if [ $DEVICE_BRIGHTNESS_STATE -lt 1 ]; then
+        # LED backlight is turned off, turn it on.
+        if [ $VERBOSE == "yes" ]; then
+            echo "Value returned 0 from ${DEVICE_PATH}"
+            echo "Setting value 1 to ${DEVICE_PATH}"
+        fi
 
-# Set MODIFIER_COMMAND_DEVICE to LED_PATH's value
-MODIFIER_COMMAND_DEVICE=$LED_PATH
+        REDIR_COMMAND_ARGS=$REDIR_COMMAND_ARGS_ON
+        X11_COMMAND_ARGS=$X11_COMMAND_ARGS_ON
+    elif [ $DEVICE_BRIGHTNESS_STATE -gt 0 ]; then
+        # LED backlight is already turned on, turn it off.
+        if [ $VERBOSE == "yes" ]; then
+            echo "Value returned 1 from ${LED_PATH}"
+            echo "Setting value 0 to ${LED_PATH}"
+        fi
 
-# Turn on/off LED backlight on keyboard depending on the stored state
-if [ $LED_STATE -lt 1 ]; then
-    # LED backlight is turned off, turn it on.
-    if [ $PRINT_VERBOSE_INFO == "yes" ]; then
-        echo "Value returned 0 from ${LED_PATH}"
-        echo "Setting value 1 to ${LED_PATH}"
+        REDIR_COMMAND_ARGS=$REDIR_COMMAND_ARGS_OFF
+        X11_COMMAND_ARGS=$X11_COMMAND_ARGS_OFF
     fi
+}
 
-    MODIFIER_COMMAND_ARGS=$MODIFIER_COMMAND_ARGS_ON
-elif [ $LED_STATE -gt 0 ]; then
-    # LED backlight is already turned on, turn it off.
-    if [ $PRINT_VERBOSE_INFO == "yes" ]; then
-        echo "Value returned 1 from ${LED_PATH}"
-        echo "Setting value 0 to ${LED_PATH}"
+apply() {
+    # Apply changes to the device depending on the command
+    if [ $COMMAND == "x11" ]; then
+        xset ${X11_COMMAND_ARGS} ${X11_COMMAND_INDEX}
+    elif [ $COMMAND == "redir" ]; then
+        _redir_check_sudo
+        echo ${REDIR_COMMAND_ARGS} > ${REDIR_COMMAND_DEVICE}
+    else
+        echo "Script test successful. No errors occurred."
+        exit 0
     fi
+}
 
-    MODIFIER_COMMAND_ARGS=$MODIFIER_COMMAND_ARGS_OFF
-fi
-
-# Make sure the command modifier is valid before executing
-if [ ! command -v ${MODIFIER_COMMAND} &>/dev/null ]; then
-    echo "${MODIFIER_COMMAND} does not exist / or is not a valid command."
-    exit 127
-fi
-
-exec ${MODIFIER_COMMAND} ${MODIFIER_COMMAND_ARGS} > ${MODIFIER_COMMAND_DEVICE}
+detect_session_type
+parse_args
+find_device
+change_state
+apply
