@@ -33,6 +33,17 @@ _redir_check_sudo() {
     fi
 }
 
+_help() {
+    echo "Usage: $(basename "$(test -L "$0" && readlink "$0" || echo "$0")") [OPTIONS...]"
+    echo
+    echo "Options:"
+    echo "  --redir: Use echo redirection to toggle backlight"
+    echo "  --testing: Verify script integrity, used for checking errors"
+    echo "  --help: Print help information then exit"
+    echo "  --verbose: Show detailed information for debugging purposes"
+    exit 0
+}
+
 detect_session_type() {
     if [ -z $XDG_SESSION_TYPE ] || [ $XDG_SESSION_TYPE != "x11" ]; then
         # Xorg is not running / not installed
@@ -52,14 +63,7 @@ parse_args() {
             COMMAND="none"
         fi
         if [ $i == "-h" ] || [ $i == "--help" ]; then
-            echo "Usage: $(basename "$(test -L "$0" && readlink "$0" || echo "$0")") [OPTIONS...] "
-            echo
-            echo "Options:"
-            echo "  --redir: Use echo redirection to toggle backlight"
-            echo "  --testing: Verify script integrity, used for checking errors"
-            echo "  --help: Print help information then exit"
-            echo "  --verbose: Show detailed information for debugging purposes"
-            exit 0
+            _help
         fi
         if [ $i == "-v" ] || [ $i == "--verbose" ]; then
             VERBOSE="yes"
