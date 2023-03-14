@@ -11,7 +11,8 @@ X11_COMMAND_ARGS_ON="led"
 X11_COMMAND_ARGS_OFF="-led"
 X11_COMMAND_ARGS=$TTY_COMMAND_ARGS_OFF
 
-COMMAND="x11" # Available commands are: x11, redir, none
+COMMAND_SESSION_TYPE="x11" # Available options: x11, tty, integrity
+COMMAND_SESSION_TOGGLE="auto" # Available options: enable, disable, auto
 
 DEVICE_PATH_PREFIX="/sys/class/leds/input"
 DEVICE_PATH_SUFFIX="::scrolllock/brightness"
@@ -19,8 +20,7 @@ DEVICE_PATH_COUNT=1
 DEVICE_PATH_COUNT_MAX=1000
 DEVICE_PATH="${DEVICE_PATH_PREFIX}${DEVICE_PATH_COUNT}${DEVICE_PATH_SUFFIX}"
 
-ARGS="$@"
-VERBOSE="no" # Pass --v or --verbose options to enable verbose logging
+VERBOSE="no" # Pass --v option to enable verbose logging
 
 _redir_check_sudo() {
     # This is a function used by the redir command, it checks for root privileges.
@@ -28,7 +28,7 @@ _redir_check_sudo() {
         echo "Checking root privileges..."
     fi
     if [ $(id -u) -gt 0 ]; then
-        echo "This action requires root privileges."
+        echo "This action requires root privileges." >&2
         exit 1
     fi
 }
@@ -37,42 +37,78 @@ _help() {
     echo "Usage: $(basename "$(test -L "$0" && readlink "$0" || echo "$0")") [OPTIONS...]"
     echo
     echo "Options:"
-    echo "  --redir: Use echo redirection to toggle backlight"
-    echo "  --testing: Verify script integrity, used for checking errors"
-    echo "  --help: Print help information then exit"
-    echo "  --verbose: Show detailed information for debugging purposes"
+    echo "  -t <STATE>: Specify toggle state of device. Default is \"auto\""
+    echo "  -s <TYPE>: Specify session type. Default is \"x11\""
+    echo "  -d <PATH>: Specify device path. The default value will be looked up recursively."
+    echo "  -i: Test if the script runs without errors, useful for debugging purposes"
+    echo "  -v: Enable verbose logging, useful for debugging purposes"
+    echo "  -h: View help information"
     exit 0
 }
 
 detect_session_type() {
     if [ -z $XDG_SESSION_TYPE ] || [ $XDG_SESSION_TYPE != "x11" ]; then
         # Xorg is not running / not installed
-        # Force COMMAND to use echo redirection instead of xset
-        echo "Xorg is not running or not installed, echo redirection will be used instead."
-        COMMAND="redir"
+        # Force COMMAND to use echo redirection instead of relying on X11 utilities
+        echo "Xorg is not running or not installed, using echo redirection to apply changes..."
+        COMMAND_SESSION_TYPE="tty"
     fi
 }
 
-parse_args() {
+parse_opts() {
     # Parse command-line arguments
-    for i in $ARGS; do
-        if [ $i == "--redir" ]; then
-            COMMAND="redir"
-        fi
-        if [ $i == "--testing" ]; then
-            COMMAND="none"
-        fi
-        if [ $i == "-h" ] || [ $i == "--help" ]; then
-            _help
-        fi
-        if [ $i == "-v" ] || [ $i == "--verbose" ]; then
-            VERBOSE="yes"
-        fi
+    local OPTIND
+
+    while getopts "t:s:d:ihv" opt; do
+        case $opt in
+            t)
+                COMMAND_SESSION_TOGGLE=$OPTARG
+
+                if [ $OPTARG != "enable" ] && [ $OPTARG != "disable" ] && [ $OPTARG != "auto" ]; then
+                    echo "Available arguments for -t: enable, disable, auto"
+                    echo "The argument provided for -t is invalid, aborting..."
+                    exit 1
+                fi
+                ;;
+            s)
+                COMMAND_SESSION_TYPE=$OPTARG
+
+                if [ $OPTARG != "x11" ] && [ $OPTARG != "tty" ]; then
+                    echo "Available arguments for -s: x11, tty"
+                    echo "The argument provided for -s is invalid, aborting..."
+                    exit 1
+                fi
+                ;;
+            d)
+                DEVICE_PATH="${OPTARG}${DEVICE_PATH_SUFFIX}"
+                ;;
+            i)
+                echo "Integrity option enabled, no changes will be applied to the device."
+                COMMAND_SESSION_TYPE="integrity"
+                VERBOSE="yes" # Verbose logging must be enabled
+                ;;
+            h)
+                _help
+                ;;
+            v)
+                VERBOSE="yes"
+                ;;
+            \?)
+                echo "Invalid option: -$OPTARG" >&2
+                exit 1
+                ;;
+            *)
+                echo "Option -$OPTARG requires an argument." >&2
+                exit 1
+                ;;
+        esac
     done
+
+    shift $((OPTIND-1))
 }
 
 find_device() {
-    # Iterate until the correct device path is found
+    # Iterate until the correct device is found
     while [ ! -f $DEVICE_PATH ];
     do
         if [ $VERBOSE == "yes" ]; then
@@ -89,7 +125,7 @@ find_device() {
 
     # If the device hasn't been resolved, then exit.
     if [ ! -f $DEVICE_PATH ]; then
-        echo "No suitable device found."
+        echo "No suitable device found." >&2
         exit 1
     elif [ -f $DEVICE_PATH ] && [ $VERBOSE == "yes" ]; then
         echo "${DEVICE_PATH} found."
@@ -97,29 +133,39 @@ find_device() {
 }
 
 change_state() {
-    # Read the value of device's brightness file to determine state
-    DEVICE_BRIGHTNESS_STATE=$(cat $DEVICE_PATH)
-
     # Set REDIR_COMMAND_DEVICE to device path
     REDIR_COMMAND_DEVICE=$DEVICE_PATH
 
-    # Turn on/off LED backlight of the device depending on the brightness state
-    if [ $DEVICE_BRIGHTNESS_STATE -lt 1 ]; then
-        # LED backlight is turned off, turn it on.
-        if [ $VERBOSE == "yes" ]; then
-            echo "Value returned 0 from ${DEVICE_PATH}"
-            echo "Setting value 1 to ${DEVICE_PATH}"
-        fi
+    if [ $COMMAND_SESSION_TOGGLE == "auto" ]; then
+        # Read the value of device's brightness file to determine state
+        DEVICE_BRIGHTNESS_STATE=$(cat $DEVICE_PATH)
 
+        # Turn on/off LED backlight of the device based on the determined state
+        if [ $DEVICE_BRIGHTNESS_STATE -lt 1 ]; then
+            # LED backlight is turned off, turn it on.
+            if [ $VERBOSE == "yes" ]; then
+                echo "Value returned 0 from ${DEVICE_PATH}"
+                echo "Setting value 1 to ${DEVICE_PATH}"
+            fi
+
+            REDIR_COMMAND_ARGS=$REDIR_COMMAND_ARGS_ON
+            X11_COMMAND_ARGS=$X11_COMMAND_ARGS_ON
+        elif [ $DEVICE_BRIGHTNESS_STATE -gt 0 ]; then
+            # LED backlight is already turned on, turn it off.
+            if [ $VERBOSE == "yes" ]; then
+                echo "Value returned 1 from ${DEVICE_PATH}"
+                echo "Setting value 0 to ${DEVICE_PATH}"
+            fi
+
+            REDIR_COMMAND_ARGS=$REDIR_COMMAND_ARGS_OFF
+            X11_COMMAND_ARGS=$X11_COMMAND_ARGS_OFF
+        fi
+    elif [ $COMMAND_SESSION_TOGGLE == "enable" ]; then
+        # Forcefully enable LED backlight
         REDIR_COMMAND_ARGS=$REDIR_COMMAND_ARGS_ON
         X11_COMMAND_ARGS=$X11_COMMAND_ARGS_ON
-    elif [ $DEVICE_BRIGHTNESS_STATE -gt 0 ]; then
-        # LED backlight is already turned on, turn it off.
-        if [ $VERBOSE == "yes" ]; then
-            echo "Value returned 1 from ${LED_PATH}"
-            echo "Setting value 0 to ${LED_PATH}"
-        fi
-
+    elif [ $COMMAND_SESSION_TOGGLE == "disable" ]; then
+        # Forcefully disable LED backlight
         REDIR_COMMAND_ARGS=$REDIR_COMMAND_ARGS_OFF
         X11_COMMAND_ARGS=$X11_COMMAND_ARGS_OFF
     fi
@@ -127,19 +173,21 @@ change_state() {
 
 apply() {
     # Apply changes to the device depending on the command
-    if [ $COMMAND == "x11" ]; then
+    if [ $COMMAND_SESSION_TYPE == "x11" ]; then
         xset ${X11_COMMAND_ARGS} ${X11_COMMAND_INDEX}
-    elif [ $COMMAND == "redir" ]; then
+    elif [ $COMMAND_SESSION_TYPE == "tty" ]; then
         _redir_check_sudo
         echo ${REDIR_COMMAND_ARGS} > ${REDIR_COMMAND_DEVICE}
+    elif [ $COMMAND_SESSION_TYPE == "integrity" ]; then
+        echo "Script end of line reached, no errors were occurred."
     else
-        echo "Script test successful. No errors occurred."
-        exit 0
+        echo "No action provided for current session" >&2
+        exit 1
     fi
 }
 
 detect_session_type
-parse_args
+parse_opts $@
 find_device
 change_state
 apply
