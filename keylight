@@ -22,17 +22,6 @@ DEVICE_PATH="${DEVICE_PATH_PREFIX}${DEVICE_PATH_COUNT}${DEVICE_PATH_SUFFIX}"
 
 VERBOSE="no" # Pass --v option to enable verbose logging
 
-_redir_check_sudo() {
-    # This is a function used by the redir command, it checks for root privileges.
-    if [ $VERBOSE == "yes" ]; then
-        echo "Checking root privileges..."
-    fi
-    if [ $(id -u) -gt 0 ]; then
-        echo "This action requires root privileges." >&2
-        exit 1
-    fi
-}
-
 _help() {
     echo "Usage: $(basename "$(test -L "$0" && readlink "$0" || echo "$0")") [OPTIONS...]"
     echo
@@ -176,7 +165,14 @@ apply() {
     if [ $COMMAND_SESSION_TYPE == "x11" ]; then
         xset ${X11_COMMAND_ARGS} ${X11_COMMAND_INDEX}
     elif [ $COMMAND_SESSION_TYPE == "tty" ]; then
-        _redir_check_sudo
+    	if [ $VERBOSE == "yes" ]; then
+        	echo "Checking root privileges..."
+        fi
+        if [ $(id -u) -gt 0 ]; then
+        	echo "This action requires root privileges." >&2
+        	exit 1
+    	fi
+    	
         echo ${REDIR_COMMAND_ARGS} > ${REDIR_COMMAND_DEVICE}
     elif [ $COMMAND_SESSION_TYPE == "integrity" ]; then
         echo "Script end of line reached, no errors were occurred."
