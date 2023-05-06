@@ -36,12 +36,12 @@ $ keylight -s tty # Using the tty session option, which will do the echo redirec
 $ sudo keylight # Alternative, running as root, which doesn't have any GUI environment running.
 ```
 
+##### This method requires root privileges, the cause of this is explained in the FAQs.
+
 ### xset is an invalid command
 Assuming you're using the `x11` session option by default, X.Org utilities might not be installed in your system.
 
 You can refer to your distribution's manual for installing it.
-
-##### This method requires root privileges, the cause of this is explained above.
 
 ## FAQs
 ### Why does the echo redirection method require root privileges?
