@@ -1,58 +1,78 @@
 # KeyLight
-A shell script that turns on/off the keyboard's backlight.
+A set of subprojects to lit up your unsupported keyboard on Linux!
 
-## Install
-Simply put the script into your desired destination (e.g `/usr/bin`, `/bin`)
+## Table of Contents
+- [Introduction](#introduction)
+	- [History](#history)
+	- [How it works](#how-it-works)
+	- [Subprojects](#subprojects)
+		- [KeyLight for X11](#keylight-for-x11)
+		- [KeyLight for TTY](#keylight-for-tty)
+		- [KeyLight Packages](#keylight-packages)
+- [Installation](#installation)
+	- [Distro-specific packages](#distro-specific-packages)
+	- [AppImage binaries](#appimage-binaries)
+	- [From sources](#from-sources)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Usage
+## Introduction
+### History
+The story of KeyLight started when I bought a seemingly Chinese keyboard from E-commerce,
+plugging it on my computer, then realizing that pressing it's designated backlight key doesn't even function properly.
+
+And when I booted up to Windows, I can clearly see that the keyboard lits up using it's designated key but it does not in Linux.
+
+And so, this project was made to provide a better support!
+
+### How it works
+Instead of accessing the raw hardware, or providing keyboard drivers, or even screw up your system, KeyLight instead uses the way that kernel provides for interacting hardware components (e.g `/sys/class`)
+
+But for `keylight-x11`, however, it doesn't even use the kernel's exported hierarchy hardware stuff! Instead, it relies on Xlib APIs (that's why it's written in C) to interact with the X server.
+
+As for `keylight-wayland`, I haven't found a solution that can interact with Wayland protocols or compositors, but you can use the [tty script](https://github.com/spiroth/keylight/tree/tty) as an alternative instead.
+
+### Subprojects
+KeyLight has nothing. But sub-projects! They were divided because it could cause some errors that will conflict other parts of the project.
+
+#### [KeyLight for X11](https://github.com/spiroth/keylight/tree/x11)
+The common way to use KeyLight, it is written in C language with the Xlib libraries.
+
+#### [KeyLight for TTY](https://github.com/spiroth/keylight/tree/tty)
+Alternative way to use KeyLight, it is written in Bash script with some shenanigan stuff.
+
+#### KeyLight Packages
+The source of Distro-specific packages are put in this branch.
+
+## Installation
+### Distro-specific packages
+I haven't put any packages to the internet, so basically building the package would be the most preferred way for now:
+
+- Arch Linux
 ```shell
-Usage: keylight [OPTIONS...]
-
-Options:
-  -t <STATE>: Specify toggle state of device. Default is "auto"
-  -s <TYPE>: Specify session type. Default is "x11"
-  -d <PATH>: Specify device path. The default value will be looked up recursively.
-  -i: Test if the script runs without errors, useful for debugging purposes
-  -v: Enable verbose logging, useful for debugging purposes
-  -h: View help information
+$ git clone https://github.com/spiroth/keylight.git
+$ cd keylight/aur
+$ makepkg -si
 ```
 
-## Examples
+*if you have time, please contribute packaging scripts for other distributions, i only use arch ;)*
+
+### AppImage binaries
+As of now, KeyLight doesn't have support for AppImage, but will be added soon.
+
+### From sources
+If you don't care about package management, you can clone the repository:
 ```shell
-$ keylight # Automatically finds the device and toggles state.
-$ keylight -t disable -d /sys/class/leds/input15 # Forcefully disables the backlights of a device.
-$ keylight -t enable -s tty # Forcefully enables the backlights using the echo redirection method.
+$ git clone https://github.com/spiroth/keylight.git
+$ cd keylight
 ```
 
-## Troubleshooting
-### KeyLight fails to work on non-X11 sessions
-This is because the default session type is `x11`, which easily relies on `xset` (a part of `xorg-utils`).
+Then switch branches between [x11](https://github.com/spiroth/keylight/tree/x11) and [tty](https://github.com/spiroth/keylight/tree/tty) to set your favor.
 
-And note that programs that are part of `xorg-utils` only work on an X11 session!
+## Contributing
+Join us by forking off the repository, and make changes to the branches, and then submit a pull request.
 
-For a workaround, use the *echo redirection* method, which directly modifies the brightness file of the device:
-```shell
-$ keylight -s tty # Using the tty session option, which will do the echo redirection method
-$ sudo keylight # Alternative, running as root, which doesn't have any GUI environment running.
-```
-
-##### This method requires root privileges, the cause of this is explained in the FAQs.
-
-### xset is an invalid command
-Assuming you're using the `x11` session option by default, X.Org utilities might not be installed in your system.
-
-You can refer to your distribution's manual for installing it.
-
-## FAQs
-### Why does the echo redirection method require root privileges?
-The echo redirection method directly modifies the `brightness` file of the device (which is `/sys/class/leds`)
-
-The file is read-only for normal users, so root privileges is required.
-
-There might be workarounds to achieve this for non-X11 sessions, but for now, this is the only workaround.
-
-### How to contribute?
-By forking off the repository, and make changes to the script, and then submit a pull request.
+Issues can be welcomed.
 
 ## License
 This project is licensed under The Unlicense license.
