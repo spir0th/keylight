@@ -18,7 +18,7 @@ If you're curious how the program does, just execute it with the `--verbose` opt
 $ keylight-x11 --verbose
 ```
 
-Or, if your keyboard does not lit after executing, see [FAQ no.1](###my-keyboard-does-not-lit)
+Or, if your keyboard does not lit after executing, see [FAQ no.1](#my-keyboard-does-not-lit)
 
 ## Building
 Prerequisites:
