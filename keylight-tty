@@ -1,17 +1,11 @@
 #!/bin/sh
-# keylight - A small shell script that turns on/off keyboard backlights.
 # Copyleft (C) 2023 spirothXYZ, all rights reserved
 REDIR_COMMAND_DEVICE="none"
 REDIR_COMMAND_ARGS_ON="1"
 REDIR_COMMAND_ARGS_OFF="0"
 REDIR_COMMAND_ARGS=$TTY_COMMAND_ARGS_OFF
 
-X11_COMMAND_INDEX="3"
-X11_COMMAND_ARGS_ON="led"
-X11_COMMAND_ARGS_OFF="-led"
-X11_COMMAND_ARGS=$TTY_COMMAND_ARGS_OFF
-
-COMMAND_SESSION_TYPE="x11" # Available options: x11, tty, integrity
+COMMAND_SESSION_TYPE="tty" # Available options: tty, integrity
 COMMAND_SESSION_TOGGLE="auto" # Available options: enable, disable, auto
 
 DEVICE_PATH_PREFIX="/sys/class/leds/input"
@@ -20,14 +14,13 @@ DEVICE_PATH_COUNT=1
 DEVICE_PATH_COUNT_MAX=1000
 DEVICE_PATH="${DEVICE_PATH_PREFIX}${DEVICE_PATH_COUNT}${DEVICE_PATH_SUFFIX}"
 
-VERBOSE="no" # Pass --v option to enable verbose logging
+VERBOSE="no" # Pass -v option to enable verbose logging
 
 _help() {
     echo "Usage: $(basename "$(test -L "$0" && readlink "$0" || echo "$0")") [OPTIONS...]"
     echo
     echo "Options:"
     echo "  -t <STATE>: Specify toggle state of device. Default is \"auto\""
-    echo "  -s <TYPE>: Specify session type. Default is \"x11\""
     echo "  -d <PATH>: Specify device path. The default value will be looked up recursively."
     echo "  -i: Test if the script runs without errors, useful for debugging purposes"
     echo "  -v: Enable verbose logging, useful for debugging purposes"
@@ -35,20 +28,11 @@ _help() {
     exit 0
 }
 
-detect_session_type() {
-    if [ -z $XDG_SESSION_TYPE ] || [ $XDG_SESSION_TYPE != "x11" ]; then
-        # Xorg is not running / not installed
-        # Force COMMAND to use echo redirection instead of relying on X11 utilities
-        echo "Xorg is not running or not installed, using echo redirection to apply changes..."
-        COMMAND_SESSION_TYPE="tty"
-    fi
-}
-
 parse_opts() {
     # Parse command-line arguments
     local OPTIND
 
-    while getopts "t:s:d:ihv" opt; do
+    while getopts "t:d:ihv" opt; do
         case $opt in
             t)
                 COMMAND_SESSION_TOGGLE=$OPTARG
@@ -56,15 +40,6 @@ parse_opts() {
                 if [ $OPTARG != "enable" ] && [ $OPTARG != "disable" ] && [ $OPTARG != "auto" ]; then
                     echo "Available arguments for -t: enable, disable, auto"
                     echo "The argument provided for -t is invalid, aborting..."
-                    exit 1
-                fi
-                ;;
-            s)
-                COMMAND_SESSION_TYPE=$OPTARG
-
-                if [ $OPTARG != "x11" ] && [ $OPTARG != "tty" ]; then
-                    echo "Available arguments for -s: x11, tty"
-                    echo "The argument provided for -s is invalid, aborting..."
                     exit 1
                 fi
                 ;;
@@ -138,7 +113,6 @@ change_state() {
             fi
 
             REDIR_COMMAND_ARGS=$REDIR_COMMAND_ARGS_ON
-            X11_COMMAND_ARGS=$X11_COMMAND_ARGS_ON
         elif [ $DEVICE_BRIGHTNESS_STATE -gt 0 ]; then
             # LED backlight is already turned on, turn it off.
             if [ $VERBOSE == "yes" ]; then
@@ -147,24 +121,19 @@ change_state() {
             fi
 
             REDIR_COMMAND_ARGS=$REDIR_COMMAND_ARGS_OFF
-            X11_COMMAND_ARGS=$X11_COMMAND_ARGS_OFF
         fi
     elif [ $COMMAND_SESSION_TOGGLE == "enable" ]; then
         # Forcefully enable LED backlight
         REDIR_COMMAND_ARGS=$REDIR_COMMAND_ARGS_ON
-        X11_COMMAND_ARGS=$X11_COMMAND_ARGS_ON
     elif [ $COMMAND_SESSION_TOGGLE == "disable" ]; then
         # Forcefully disable LED backlight
         REDIR_COMMAND_ARGS=$REDIR_COMMAND_ARGS_OFF
-        X11_COMMAND_ARGS=$X11_COMMAND_ARGS_OFF
     fi
 }
 
 apply() {
     # Apply changes to the device depending on the command
-    if [ $COMMAND_SESSION_TYPE == "x11" ]; then
-        xset ${X11_COMMAND_ARGS} ${X11_COMMAND_INDEX}
-    elif [ $COMMAND_SESSION_TYPE == "tty" ]; then
+    if [ $COMMAND_SESSION_TYPE == "tty" ]; then
     	if [ $VERBOSE == "yes" ]; then
         	echo "Checking root privileges..."
         fi
@@ -175,14 +144,12 @@ apply() {
     	
         echo ${REDIR_COMMAND_ARGS} > ${REDIR_COMMAND_DEVICE}
     elif [ $COMMAND_SESSION_TYPE == "integrity" ]; then
-        echo "Script end of line reached, no errors were occurred."
+        echo "Integrity check reached end-of-line."
     else
-        echo "No action provided for current session" >&2
         exit 1
     fi
 }
 
-detect_session_type
 parse_opts $@
 find_device
 change_state
