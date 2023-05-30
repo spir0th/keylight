@@ -1,6 +1,6 @@
 # Arch Linux pacman files
 pacman/keylight-tty/*
 pacman/keylight-x11/*
-pkg/*
-src/*
+pacman/pkg/*
+pacman/src/*
 keylight-*-x86_64.pkg.tar.zst
