@@ -41,6 +41,7 @@ Clean the output:
 ```shell
 $ make clean
 $ make distclean
+$ make maintainer-clean
 ```
 
 ## FAQ
