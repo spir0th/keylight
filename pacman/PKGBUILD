@@ -20,16 +20,17 @@ sha256sums=('SKIP' 'SKIP')
 
 build() {
 	cd $srcdir/$pkgname-x11
+	autoreconf --install
+	./configure --prefix=/usr
 	make
 }
 
 check() {
-	exec $srcdir/$pkgname-x11/keylight-x11 --no-toggle --verbose
+	exec $srcdir/$pkgname-x11/src/keylight --no-toggle
 	exec $srcdir/$pkgname-tty/keylight-tty -i
 }
 
 package() {
-        mkdir -p $pkgdir/usr/bin
-        cp $srcdir/$pkgname-x11/keylight-x11 $pkgdir/usr/bin
-        cp $srcdir/$pkgname-tty/keylight-tty $pkgdir/usr/bin
+	cd $srcdir/$pkgname-x11
+        make DESTDIR="$pkgdir/" install
 }
