@@ -1,0 +1,35 @@
+# Maintainer: Gian Borcillo <borcillofg2020@gmail.com>
+
+pkgname=keylight
+pkgver=1.0.4
+pkgrel=1
+pkgdesc='A set of subprojects to lit up your unsupported keyboard'
+url="https://github.com/spiroth/keylight"
+arch=('x86_64')
+license=('Unlicense')
+depends=('keylight' 'keylight-x11' 'keylight-tty')
+conflicts=('keylight')
+depends=('xorg-server')
+makedepends=('libx11')
+optdepends=('sudo: Request root privileges for keylight-tty')
+source=(
+	"${pkgname}-x11::git+https://github.com/spiroth/keylight.git#branch=x11"
+	"${pkgname}-tty::git+https://github.com/spiroth/keylight.git#branch=tty"
+)
+sha256sums=('SKIP' 'SKIP')
+
+build() {
+	cd $srcdir/$pkgname-x11
+	make
+}
+
+check() {
+	exec $srcdir/$pkgname-x11/keylight-x11 --no-toggle --verbose
+	exec $srcdir/$pkgname-tty/keylight-tty -i
+}
+
+package() {
+        mkdir -p $pkgdir/usr/bin
+        cp $srcdir/$pkgname-x11/keylight-x11 $pkgdir/usr/bin
+        cp $srcdir/$pkgname-tty/keylight-tty $pkgdir/usr/bin
+}

@@ -26,9 +26,9 @@ And when I booted up to Windows, I can clearly see that the keyboard lits up usi
 And so, this project was made to provide a better support!
 
 ### How it works
-Instead of accessing the raw hardware, or providing keyboard drivers, or even screw up your system, KeyLight instead uses the way that kernel provides for interacting hardware components (e.g `/sys/class`)
+Instead of providing keyboard drivers, or screw up your system, KeyLight uses the exposed hierarchy hardware made by the Linux kernel in the filesystem.
 
-But for `keylight-x11`, however, it doesn't even use the kernel's exported hierarchy hardware stuff! Instead, it relies on Xlib APIs (that's why it's written in C) to interact with the X server.
+But for `keylight-x11`, however, it doesn't even use the filesystem! Instead, it relies on Xlib APIs (that's why it's written in C) to interact with the X server.
 
 As for `keylight-wayland`, I haven't found a solution that can interact with Wayland protocols or compositors, but you can use the [tty script](https://github.com/spiroth/keylight/tree/tty) as an alternative instead.
 
@@ -51,8 +51,8 @@ I haven't put any packages to the internet, so basically building the package wo
 - Arch Linux
 ```shell
 $ git clone https://github.com/spiroth/keylight.git
-$ cd keylight/aur
-$ makepkg -si
+$ cd keylight/pacman
+$ makepkg -si # or makepkg -si --repackage if not built correctly
 ```
 
 *if you have time, please contribute packaging scripts for other distributions, i only use arch ;)*
@@ -67,12 +67,12 @@ $ git clone https://github.com/spiroth/keylight.git
 $ cd keylight
 ```
 
-Then switch branches between [x11](https://github.com/spiroth/keylight/tree/x11) and [tty](https://github.com/spiroth/keylight/tree/tty) to set your favor.
+Then refer to [X11 branch README file](https://github.com/spiroth/keylight/tree/x11) or [TTY branch README file](https://github.com/spiroth/keylight/tree/tty).
 
 ## Contributing
 Join us by forking off the repository, and make changes to the branches, and then submit a pull request.
 
-Issues can be welcomed.
+Issues are welcomed.
 
 ## License
 This project is licensed under The Unlicense license.
