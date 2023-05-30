@@ -2,7 +2,7 @@
 
 pkgname=keylight
 pkgver=1.0.4
-pkgrel=1
+pkgrel=2
 pkgdesc='A set of subprojects to lit up your unsupported keyboard'
 url="https://github.com/spiroth/keylight"
 arch=('x86_64')
@@ -13,11 +13,13 @@ depends=('xorg-server')
 makedepends=('libx11')
 optdepends=('sudo: Request root privileges for keylight-tty')
 source=(
-	"${pkgname}-x11::git+https://github.com/spiroth/keylight.git#branch=x11"
-	"${pkgname}-tty::git+https://github.com/spiroth/keylight.git#branch=tty"
+	"https://github.com/spiroth/keylight/releases/download/v${pkgver}/keylight-x11_${pkgver}.tar.xz"
+	"https://github.com/spiroth/keylight/releases/download/v${pkgver}/keylight-tty_${pkgver}.tar.xz"
 )
-sha256sums=('SKIP' 'SKIP')
-
+sha256sums=(
+	'448cb7e6b0a3d9606cfcc4408a1b0198395b087116f5cb0d7f5a80316e36bdff'
+	'e79d93607b4ee5d69a6320c31524f2275ebd8671c35b44402d0a228647abffae'
+)
 
 build() {
 	cd "${srcdir}/${pkgname}-x11"
