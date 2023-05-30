@@ -18,8 +18,9 @@ source=(
 )
 sha256sums=('SKIP' 'SKIP')
 
+
 build() {
-	cd $srcdir/$pkgname-x11
+	cd "${srcdir}/${pkgname}-x11"
 	autoreconf --install
 	./configure --prefix=/usr
 	make
@@ -31,6 +32,14 @@ check() {
 }
 
 package() {
+	_temp_output=$srcdir/out
+
 	cd $srcdir/$pkgname-x11
-        make DESTDIR="$pkgdir/" install
+        make DESTDIR=$_temp_output install
+        mv $_temp_output/usr/bin/keylight $_temp_output/usr/bin/keylight-x11
+
+	cd $srcdir/$pkgname-tty
+	install -Dm755 keylight-tty $_temp_output/usr/bin/keylight-tty
+	
+	mv -v "${_temp_output}"/* $pkgdir
 }
