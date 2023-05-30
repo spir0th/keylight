@@ -23,9 +23,16 @@ Or, if your keyboard does not lit after executing, see [FAQ no.1](#my-keyboard-d
 ## Building
 Prerequisites:
 - X11 development headers and libs
+- GNU Autotools
 - Any C-compliant compiler (GCC is recommended)
 
-Compile the program using the Makefile:
+Configure the build:
+```shell
+$ autoreconf --install
+$ ./configure
+```
+
+Build the program:
 ```shell
 $ make
 ```
@@ -33,6 +40,7 @@ $ make
 Clean the output:
 ```shell
 $ make clean
+$ make distclean
 ```
 
 ## FAQ
@@ -51,7 +59,7 @@ keylight-x11: LED indicator mask: 11954
 
 Look at the value `11954`, and check that your keyboard is not lit up, we can use this value for the environment variable `KEYLIGHT_LED_MASK_OFF`.
 
-Eventually, when you got it right, you can also set `KEYLIGHT_LED_MASK_ON` when you get the value of the LED mask in ON state.
+Eventually when you got it right, you can also set `KEYLIGHT_LED_MASK_ON` by re-running the command again and when your keyboard is already lit up.
 
 ### Could this replace the script?
 No. I made this as a replacement for `xset`, since it does not have the ability to toggle LED indicators in just one command.
