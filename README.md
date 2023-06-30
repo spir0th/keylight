@@ -1,6 +1,9 @@
 # KeyLight
 A set of subprojects to lit up your unsupported keyboard on Linux!
 
+## Warning
+This project has been archived, it has been replaced by this [gist.](https://gist.github.com/spiroth/08f8d87328fbaa03f6e4c8c0fdd4b829)
+
 ## Table of Contents
 - [Introduction](#introduction)
 	- [History](#history)
